@@ -181,7 +181,7 @@
         <div class="max-w-md mx-auto">
             <i class="fa-solid fa-star-and-crescent text-red-500 text-xl mb-2 block"></i>
             <p class="text-slate-600 italic font-serif text-sm">"Beni Türk hekimlerine emanet ediniz."</p>
-            <p class="text-slate-800 font-bold text-xs mt-1 tracking-wide">- ATATÜRK</p>
+            <p class="text-slate-800 font-bold text-xs mt-1 tracking-wide">ATATÜRK</p>
         </div>
     </footer>
 
@@ -325,8 +325,15 @@
                 let namesHtml = '';
                 if(assignedNames.length > 0) {
                     namesHtml = `<div class="w-full mt-1 flex flex-col gap-0.5 overflow-y-auto no-scrollbar" style="max-height: 100%;">`;
+                    // Duplicate isimleri önle ve her ismin yanına silme butonu ekle
                     [...new Set(assignedNames)].forEach(name => {
-                        namesHtml += `<span class="text-[9px] leading-3 text-slate-700 bg-white/60 px-1 rounded truncate text-left w-full block">${name}</span>`;
+                        namesHtml += `
+                            <div class="flex items-center justify-between bg-white/60 px-1 rounded gap-1">
+                                <span class="text-[9px] leading-3 text-slate-700 truncate">${name}</span>
+                                <button onclick="deleteAssignment(event, '${dateStr}', '${name}')" class="text-red-500 hover:text-red-700 text-[10px] leading-none flex items-center justify-center w-3 h-3 rounded-full hover:bg-red-100 transition-colors">
+                                    <i class="fa-solid fa-times"></i>
+                                </button>
+                            </div>`;
                     });
                     namesHtml += `</div>`;
                 }
@@ -348,6 +355,28 @@
 
                 dayDiv.onclick = () => openDayModal(dateStr);
                 grid.appendChild(dayDiv);
+            }
+        }
+
+        // --- TAKVİMDEN DOĞRUDAN SİLME ---
+        function deleteAssignment(e, dateStr, docName) {
+            e.stopPropagation(); // Takvim modalının açılmasını engelle
+            
+            if(!confirm(`${docName} adlı doktoru ${dateStr} tarihli nöbetten silmek istediğinize emin misiniz?`)) return;
+
+            if (assignments[dateStr]) {
+                let changed = false;
+                Object.keys(assignments[dateStr]).forEach(slotKey => {
+                    if (assignments[dateStr][slotKey].includes(docName)) {
+                        assignments[dateStr][slotKey] = assignments[dateStr][slotKey].filter(n => n !== docName);
+                        changed = true;
+                    }
+                });
+                
+                if (changed) {
+                    localStorage.setItem('mediAssignments', JSON.stringify(assignments));
+                    renderCalendar(); // Takvimi güncelle
+                }
             }
         }
 
