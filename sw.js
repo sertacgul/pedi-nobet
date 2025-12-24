@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pedinobet-cache-v5'; // index.html güncellemeleri için versiyonu v5 yaptık
+const CACHE_NAME = 'medinobet-cache-v5'; // index.html güncellemeleri için versiyonu v5 yaptık
 const ASSETS = [
   './',
   './index.html',
@@ -36,4 +36,5 @@ self.addEventListener('fetch', (e) => {
   e.respondWith(
     caches.match(e.request).then((response) => response || fetch(e.request))
   );
+
 });
