@@ -22,9 +22,27 @@
         .glass-card { background: rgba(255, 255, 255, 0.98); border: 1px solid rgba(255, 255, 255, 0.5); }
         .tab-active { color: #2563eb; border-bottom: 3px solid #2563eb; }
         .tab-inactive { color: #94a3b8; }
-        /* Takvim Hücresi */
-        .cal-day { aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: start; padding-top: 4px; cursor: pointer; border-radius: 8px; transition: all 0.2s; position: relative; border: 1px solid transparent; }
-        .cal-day:active { transform: scale(0.95); }
+        
+        /* Takvim Hücresi Güncellemesi */
+        .cal-day { 
+            min-height: 85px; /* İsimler için daha fazla alan */
+            display: flex; 
+            flex-direction: column; 
+            align-items: start; /* Sola hizala */
+            justify-content: start; /* Yukarı hizala */
+            padding: 4px; 
+            cursor: pointer; 
+            border-radius: 8px; 
+            transition: all 0.2s; 
+            position: relative; 
+            border: 1px solid transparent; 
+        }
+        .cal-day:active { transform: scale(0.98); }
+        
+        /* İsim Listesi Scroll Gizleme */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
         /* Durum Renkleri */
         .status-ok { background-color: #dcfce7; color: #166534; border-color: #86efac; }
         .status-error { background-color: #fee2e2; color: #991b1b; border-color: #fca5a5; }
@@ -162,8 +180,8 @@
     <footer class="bg-white border-t border-slate-200 p-6 text-center z-10">
         <div class="max-w-md mx-auto">
             <i class="fa-solid fa-star-and-crescent text-red-500 text-xl mb-2 block"></i>
-            <p class="text-slate-600 italic font-serif text-sm">"Beni Türk hekimlerine emanet edin."</p>
-            <p class="text-slate-800 font-bold text-xs mt-1 tracking-wide">- M. Kemal ATATÜRK</p>
+            <p class="text-slate-600 italic font-serif text-sm">"Beni Türk hekimlerine emanet ediniz."</p>
+            <p class="text-slate-800 font-bold text-xs mt-1 tracking-wide">- ATATÜRK</p>
         </div>
     </footer>
 
@@ -296,16 +314,36 @@
                 if(status === 'error') statusClass = 'status-error';
                 else if(status === 'ok') statusClass = 'status-ok';
 
+                // --- İSİMLERİ HAZIRLA ---
+                let assignedNames = [];
+                if(assignments[dateStr]) {
+                    Object.values(assignments[dateStr]).forEach(docs => {
+                        if(Array.isArray(docs)) assignedNames.push(...docs);
+                    });
+                }
+                
+                let namesHtml = '';
+                if(assignedNames.length > 0) {
+                    namesHtml = `<div class="w-full mt-1 flex flex-col gap-0.5 overflow-y-auto no-scrollbar" style="max-height: 100%;">`;
+                    [...new Set(assignedNames)].forEach(name => {
+                        namesHtml += `<span class="text-[9px] leading-3 text-slate-700 bg-white/60 px-1 rounded truncate text-left w-full block">${name}</span>`;
+                    });
+                    namesHtml += `</div>`;
+                }
+
                 const dayDiv = document.createElement('div');
                 dayDiv.className = `cal-day ${statusClass}`;
                 
                 dayDiv.innerHTML = `
-                    <span class="font-bold text-sm">${d}</span>
-                    <span class="text-[10px] opacity-70">${dayName}</span>
+                    <div class="flex justify-between w-full items-baseline border-b border-black/5 pb-0.5 mb-0.5 shrink-0">
+                        <span class="font-bold text-sm leading-none">${d}</span>
+                        <span class="text-[9px] opacity-70 leading-none">${dayName}</span>
+                    </div>
+                    ${namesHtml}
                 `;
                 
                 if(status === 'error') {
-                     dayDiv.innerHTML += `<span class="absolute bottom-1 w-1.5 h-1.5 bg-red-500 rounded-full"></span>`;
+                     dayDiv.innerHTML += `<span class="absolute top-1 right-1 w-1.5 h-1.5 bg-red-500 rounded-full"></span>`;
                 }
 
                 dayDiv.onclick = () => openDayModal(dateStr);
