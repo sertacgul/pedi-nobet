@@ -538,117 +538,84 @@
         }
 
         function renderModalSlots() {
-
-            const container = document.getElementById('modalSlotsArea');
-
-            container.innerHTML = '';
-
-            let dayAssigns = assignments[selectedDateStr] || {};
-
-            let warnings = [];
-
-            // --- AKILLI SIRALAMA ---
-
-            let sortedDoctors = [...doctors].sort((a, b) => {
-
-                const prefA = a.prefs[selectedDateStr] || 0;
-
-                const prefB = b.prefs[selectedDateStr] || 0;
-
-                const getWeight = (p) => p === 1 ? 0 : (p === 0 ? 1 : 2);
-
-                return getWeight(prefA) - getWeight(prefB);
-
-            });
-
-            settings.slots.forEach(slot => {
-
-                const currentDocs = dayAssigns[`slot${slot.id}`] || [];
-
-                const slotDiv = document.createElement('div');
-
-                slotDiv.className = "border rounded-xl p-3 bg-slate-50";
-
-                let countColor = "text-slate-500";
-
-                if(currentDocs.length < slot.min) { countColor = "text-red-600 font-bold"; warnings.push(`${slot.name}: Eksik doktor.`); }
-
-                else if(currentDocs.length > slot.max) { countColor = "text-red-600 font-bold"; warnings.push(`${slot.name}: Fazla doktor.`); }
-
-                else if(currentDocs.length > 0) { countColor = "text-green-600 font-bold"; }
-
-                slotDiv.innerHTML = `
-<div class="flex justify-between items-center mb-2">
-<span class="font-bold text-sm">${slot.name}</span>
-<span class="text-xs ${countColor}">(${currentDocs.length} / ${slot.min}-${slot.max})</span>
+           const container = document.getElementById('modalSlotsArea');
+           container.innerHTML = '';
+           let dayAssigns = assignments[selectedDateStr] || {};
+           let warnings = [];
+           // --- YENİ EKLENEN KISIM: İSTİRAHAT KONTROLÜ ---
+           // 1. Seçili günden bir önceki günü buluyoruz
+           const d = new Date(selectedDateStr);
+           d.setDate(d.getDate() - 1);
+           // Tarih formatını YYYY-AA-GG (ör: 2023-10-24) haline getiriyoruz
+           const prevDateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+           // 2. Bir önceki gün nöbet tutanları topluyoruz
+           let restingDoctors = [];
+           if(assignments[prevDateStr]) {
+               Object.values(assignments[prevDateStr]).forEach(list => {
+                   if(Array.isArray(list)) restingDoctors.push(...list);
+               });
+           }
+           // ------------------------------------------------
+           // Doktorları tercihe göre sırala
+           let sortedDoctors = [...doctors].sort((a, b) => {
+               const prefA = a.prefs[selectedDateStr] || 0;
+               const prefB = b.prefs[selectedDateStr] || 0;
+               const getWeight = (p) => p === 1 ? 0 : (p === 0 ? 1 : 2);
+               return getWeight(prefA) - getWeight(prefB);
+           });
+           settings.slots.forEach(slot => {
+               const currentDocs = dayAssigns[`slot${slot.id}`] || [];
+               const slotDiv = document.createElement('div');
+               slotDiv.className = "border border-slate-200 rounded-xl p-3 bg-white shadow-sm";
+               let countColor = "text-slate-500";
+               if(currentDocs.length < slot.min) { countColor = "text-red-600 font-bold"; warnings.push(`${slot.name}: Eksik personel.`); }
+               else if(currentDocs.length > slot.max) { countColor = "text-red-600 font-bold"; warnings.push(`${slot.name}: Fazla personel.`); }
+               else if(currentDocs.length > 0) { countColor = "text-green-600 font-bold"; }
+               slotDiv.innerHTML = `
+<div class="flex justify-between items-center mb-2.5">
+<span class="font-bold text-sm text-slate-800">${slot.name}</span>
+<span class="text-xs ${countColor} bg-slate-100 px-2 py-0.5 rounded-full">(${currentDocs.length} / ${slot.min}-${slot.max})</span>
 </div>
-
-                `;
-
-                const buttonsDiv = document.createElement('div');
-
-                buttonsDiv.className = "flex flex-wrap gap-2";
-
-                sortedDoctors.forEach(doc => {
-
-                    const isAssignedHere = currentDocs.includes(doc.name);
-
-                    const pref = doc.prefs[selectedDateStr] || 0; 
-
-                    let btnClass = "px-3 py-1.5 rounded text-xs border transition flex items-center gap-1 ";
-
-                    let icon = "";
-
-                    if(isAssignedHere) {
-
-                        btnClass += "bg-blue-600 text-white border-blue-600 shadow-md";
-
-                        icon = `<i class="fa-solid fa-check"></i>`;
-
-                    } else {
-
-                        btnClass += "bg-white text-slate-600 border-slate-200 hover:bg-slate-100";
-
-                    }
-
-                    if(pref === 1) icon += `<i class="fa-solid fa-star text-green-500 ml-1"></i>`;
-
-                    if(pref === 2) icon += `<i class="fa-solid fa-ban text-red-400 ml-1"></i>`;
-
-                    const btn = document.createElement('button');
-
-                    btn.className = btnClass;
-
-                    btn.innerHTML = `${icon} ${doc.name}`;
-
-                    btn.onclick = () => toggleAssignment(slot.id, doc.name);
-
-                    buttonsDiv.appendChild(btn);
-
-                });
-
-                slotDiv.appendChild(buttonsDiv);
-
-                container.appendChild(slotDiv);
-
-            });
-
-            const warnBox = document.getElementById('modalWarnings');
-
-            if(warnings.length > 0) {
-
-                warnBox.classList.remove('hidden');
-
-                warnBox.innerHTML = `<strong>Dikkat:</strong><ul class="list-disc list-inside mt-1">${warnings.map(w => `<li>${w}</li>`).join('')}</ul>`;
-
-            } else {
-
-                warnBox.classList.add('hidden');
-
-            }
-
-        }
-
+               `;
+               const buttonsDiv = document.createElement('div');
+               buttonsDiv.className = "flex flex-wrap gap-2";
+               sortedDoctors.forEach(doc => {
+                   const isAssignedHere = currentDocs.includes(doc.name);
+                   // --- FİLTRELEME ---
+                   // Eğer doktor dün nöbet tuttuysa (restingDoctors listesindeyse)
+                   // VE bugün bu nöbete önceden yazılmamışsa, listeye ekleme (gizle).
+                   if (restingDoctors.includes(doc.name) && !isAssignedHere) {
+                       return;
+                   }
+                   // ------------------
+                   const pref = doc.prefs[selectedDateStr] || 0;
+                   let btnClass = "px-3 py-2 rounded-lg text-xs border transition flex items-center gap-1.5 font-medium ";
+                   let icon = "";
+                   if(isAssignedHere) {
+                       btnClass += "bg-red-600 text-white border-red-600 shadow-md transform scale-105";
+                       icon = `<i class="fa-solid fa-check"></i>`;
+                   } else {
+                       btnClass += "bg-white text-slate-600 border-slate-200 hover:bg-slate-50";
+                   }
+                   if(pref === 1) icon += `<i class="fa-solid fa-star text-yellow-400"></i>`;
+                   if(pref === 2) icon += `<i class="fa-solid fa-ban text-red-400"></i>`;
+                   const btn = document.createElement('button');
+                   btn.className = btnClass;
+                   btn.innerHTML = `${icon} ${doc.name}`;
+                   btn.onclick = () => toggleAssignment(slot.id, doc.name);
+                   buttonsDiv.appendChild(btn);
+               });
+               slotDiv.appendChild(buttonsDiv);
+               container.appendChild(slotDiv);
+           });
+           const warnBox = document.getElementById('modalWarnings');
+           if(warnings.length > 0) {
+               warnBox.classList.remove('hidden');
+               warnBox.innerHTML = `<strong>Durum:</strong><ul class="list-disc list-inside mt-1">${warnings.map(w => `<li>${w}</li>`).join('')}</ul>`;
+           } else {
+               warnBox.classList.add('hidden');
+           }
+       }
         function toggleAssignment(slotId, docName) {
 
             if(!assignments[selectedDateStr]) assignments[selectedDateStr] = {};
@@ -1118,3 +1085,4 @@
 </body>
 </html>
  
+
